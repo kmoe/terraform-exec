@@ -10,7 +10,7 @@ import (
 func TestImportCmd(t *testing.T) {
 	td := testTempDir(t)
 
-	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest012))
+	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest014))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,6 +66,29 @@ func TestImportCmd(t *testing.T) {
 			"-var", "var2=bar",
 			"my-addr2",
 			"my-id2",
+		}, nil, importCmd)
+	})
+
+	t.Run("chdir", func(t *testing.T) {
+		importCmd, err := tf.importCmd(context.Background(),
+			"my-addr",
+			"my-id",
+			Chdir("testpath"),
+		)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assertCmd(t, []string{
+			"-chdir=testpath",
+			"import",
+			"-no-color",
+			"-input=false",
+			"-lock-timeout=0s",
+			"-lock=true",
+			"my-addr",
+			"my-id",
 		}, nil, importCmd)
 	})
 }

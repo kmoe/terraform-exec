@@ -10,7 +10,7 @@ import (
 func TestApplyCmd(t *testing.T) {
 	td := testTempDir(t)
 
-	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest012))
+	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest014))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,6 +58,48 @@ func TestApplyCmd(t *testing.T) {
 			"-var", "var1=foo",
 			"-var", "var2=bar",
 			"testfile",
+		}, nil, applyCmd)
+	})
+
+	t.Run("chdir", func(t *testing.T) {
+		applyCmd, err := tf.applyCmd(context.Background(),
+			Chdir("testpath"),
+		)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assertCmd(t, []string{
+			"-chdir=testpath",
+			"apply",
+			"-no-color",
+			"-auto-approve",
+			"-input=false",
+			"-lock=true",
+			"-parallelism=10",
+			"-refresh=true",
+		}, nil, applyCmd)
+	})
+
+	t.Run("plan", func(t *testing.T) {
+		applyCmd, err := tf.applyCmd(context.Background(),
+			PlanArg("testplan"),
+		)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assertCmd(t, []string{
+			"apply",
+			"-no-color",
+			"-auto-approve",
+			"-input=false",
+			"-lock=true",
+			"-parallelism=10",
+			"-refresh=true",
+			"testplan",
 		}, nil, applyCmd)
 	})
 }

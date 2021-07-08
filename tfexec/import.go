@@ -2,6 +2,7 @@ package tfexec
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"strconv"
 )
@@ -10,6 +11,7 @@ type importConfig struct {
 	addr               string
 	id                 string
 	backup             string
+	chdir              string
 	config             string
 	allowMissingConfig bool
 	lock               bool
@@ -34,6 +36,10 @@ type ImportOption interface {
 
 func (opt *BackupOption) configureImport(conf *importConfig) {
 	conf.backup = opt.path
+}
+
+func (opt *ChdirOption) configureImport(conf *importConfig) {
+	conf.chdir = opt.path
 }
 
 func (opt *ConfigOption) configureImport(conf *importConfig) {
@@ -85,10 +91,25 @@ func (tf *Terraform) importCmd(ctx context.Context, address, id string, opts ...
 	c := defaultImportOptions
 
 	for _, o := range opts {
+		switch o.(type) {
+		case *ChdirOption:
+			err := tf.compatible(ctx, tf0_14_0, nil)
+			if err != nil {
+				return nil, fmt.Errorf("-chdir was added in Terraform 0.14: %w", err)
+			}
+		}
+
 		o.configureImport(&c)
 	}
 
-	args := []string{"import", "-no-color", "-input=false"}
+	var args []string
+
+	// global opts
+	if c.chdir != "" {
+		args = append(args, "-chdir="+c.chdir)
+	}
+
+	args = append(args, []string{"import", "-no-color", "-input=false"}...)
 
 	// string opts: only pass if set
 	if c.backup != "" {

@@ -3,10 +3,12 @@ package tfexec
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os/exec"
 )
 
 type outputConfig struct {
+	chdir string
 	state string
 	json  bool
 }
@@ -16,6 +18,10 @@ var defaultOutputOptions = outputConfig{}
 // OutputOption represents options used in the Output method.
 type OutputOption interface {
 	configureOutput(*outputConfig)
+}
+
+func (opt *ChdirOption) configureOutput(conf *outputConfig) {
+	conf.chdir = opt.path
 }
 
 func (opt *StateOption) configureOutput(conf *outputConfig) {
@@ -34,10 +40,14 @@ type OutputMeta struct {
 
 // Output represents the terraform output subcommand.
 func (tf *Terraform) Output(ctx context.Context, opts ...OutputOption) (map[string]OutputMeta, error) {
-	outputCmd := tf.outputCmd(ctx, opts...)
+	outputCmd, err := tf.outputCmd(ctx, opts...)
+
+	if err != nil {
+		return nil, err
+	}
 
 	outputs := map[string]OutputMeta{}
-	err := tf.runTerraformCmdJSON(ctx, outputCmd, &outputs)
+	err = tf.runTerraformCmdJSON(ctx, outputCmd, &outputs)
 	if err != nil {
 		return nil, err
 	}
@@ -45,19 +55,34 @@ func (tf *Terraform) Output(ctx context.Context, opts ...OutputOption) (map[stri
 	return outputs, nil
 }
 
-func (tf *Terraform) outputCmd(ctx context.Context, opts ...OutputOption) *exec.Cmd {
+func (tf *Terraform) outputCmd(ctx context.Context, opts ...OutputOption) (*exec.Cmd, error) {
 	c := defaultOutputOptions
 
 	for _, o := range opts {
+		switch o.(type) {
+		case *ChdirOption:
+			err := tf.compatible(ctx, tf0_14_0, nil)
+			if err != nil {
+				return nil, fmt.Errorf("-chdir was added in Terraform 0.14: %w", err)
+			}
+		}
+
 		o.configureOutput(&c)
 	}
 
-	args := []string{"output", "-no-color", "-json"}
+	var args []string
+
+	// global opts
+	if c.chdir != "" {
+		args = append(args, "-chdir="+c.chdir)
+	}
+
+	args = append(args, []string{"output", "-no-color", "-json"}...)
 
 	// string opts: only pass if set
 	if c.state != "" {
 		args = append(args, "-state="+c.state)
 	}
 
-	return tf.buildTerraformCmd(ctx, nil, args...)
+	return tf.buildTerraformCmd(ctx, nil, args...), nil
 }

@@ -9,6 +9,7 @@ import (
 
 type destroyConfig struct {
 	backup string
+	chdir  string
 	dir    string
 	lock   bool
 
@@ -36,6 +37,10 @@ var defaultDestroyOptions = destroyConfig{
 // DestroyOption represents options used in the Destroy method.
 type DestroyOption interface {
 	configureDestroy(*destroyConfig)
+}
+
+func (opt *ChdirOption) configureDestroy(conf *destroyConfig) {
+	conf.chdir = opt.path
 }
 
 func (opt *DirOption) configureDestroy(conf *destroyConfig) {
@@ -99,10 +104,25 @@ func (tf *Terraform) destroyCmd(ctx context.Context, opts ...DestroyOption) (*ex
 	c := defaultDestroyOptions
 
 	for _, o := range opts {
+		switch o.(type) {
+		case *ChdirOption:
+			err := tf.compatible(ctx, tf0_14_0, nil)
+			if err != nil {
+				return nil, fmt.Errorf("-chdir was added in Terraform 0.14: %w", err)
+			}
+		}
+
 		o.configureDestroy(&c)
 	}
 
-	args := []string{"destroy", "-no-color", "-auto-approve", "-input=false"}
+	var args []string
+
+	// global opts
+	if c.chdir != "" {
+		args = append(args, "-chdir="+c.chdir)
+	}
+
+	args = append(args, []string{"destroy", "-no-color", "-auto-approve", "-input=false"}...)
 
 	// string opts: only pass if set
 	if c.backup != "" {

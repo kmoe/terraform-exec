@@ -10,13 +10,28 @@ import (
 )
 
 type showConfig struct {
+	chdir        string
+	planArg      string
 	reattachInfo ReattachInfo
+	stateArg     string
 }
 
 var defaultShowOptions = showConfig{}
 
 type ShowOption interface {
 	configureShow(*showConfig)
+}
+
+func (opt *ChdirOption) configureShow(conf *showConfig) {
+	conf.chdir = opt.path
+}
+
+func (opt *PlanArgOption) configureShow(conf *showConfig) {
+	conf.planArg = opt.path
+}
+
+func (opt *StateArgOption) configureShow(conf *showConfig) {
+	conf.stateArg = opt.path
 }
 
 func (opt *ReattachOption) configureShow(conf *showConfig) {
@@ -46,7 +61,11 @@ func (tf *Terraform) Show(ctx context.Context, opts ...ShowOption) (*tfjson.Stat
 		mergeEnv[reattachEnvVar] = reattachStr
 	}
 
-	showCmd := tf.showCmd(ctx, true, mergeEnv)
+	showCmd, err := tf.showCmd(ctx, true, mergeEnv)
+
+	if err != nil {
+		return nil, err
+	}
 
 	var ret tfjson.State
 	ret.UseJSONNumber(true)
@@ -89,7 +108,11 @@ func (tf *Terraform) ShowStateFile(ctx context.Context, statePath string, opts .
 		mergeEnv[reattachEnvVar] = reattachStr
 	}
 
-	showCmd := tf.showCmd(ctx, true, mergeEnv, statePath)
+	showCmd, err := tf.showCmd(ctx, true, mergeEnv, append(opts, StateArg(statePath))...)
+
+	if err != nil {
+		return nil, err
+	}
 
 	var ret tfjson.State
 	ret.UseJSONNumber(true)
@@ -132,7 +155,11 @@ func (tf *Terraform) ShowPlanFile(ctx context.Context, planPath string, opts ...
 		mergeEnv[reattachEnvVar] = reattachStr
 	}
 
-	showCmd := tf.showCmd(ctx, true, mergeEnv, planPath)
+	showCmd, err := tf.showCmd(ctx, true, mergeEnv, append(opts, PlanArg(planPath))...)
+
+	if err != nil {
+		return nil, err
+	}
 
 	var ret tfjson.Plan
 	err = tf.runTerraformCmdJSON(ctx, showCmd, &ret)
@@ -171,11 +198,15 @@ func (tf *Terraform) ShowPlanFileRaw(ctx context.Context, planPath string, opts 
 		mergeEnv[reattachEnvVar] = reattachStr
 	}
 
-	showCmd := tf.showCmd(ctx, false, mergeEnv, planPath)
+	showCmd, err := tf.showCmd(ctx, false, mergeEnv, append(opts, PlanArg(planPath))...)
+
+	if err != nil {
+		return "", err
+	}
 
 	var ret bytes.Buffer
 	showCmd.Stdout = &ret
-	err := tf.runTerraformCmd(ctx, showCmd)
+	err = tf.runTerraformCmd(ctx, showCmd)
 	if err != nil {
 		return "", err
 	}
@@ -184,13 +215,43 @@ func (tf *Terraform) ShowPlanFileRaw(ctx context.Context, planPath string, opts 
 
 }
 
-func (tf *Terraform) showCmd(ctx context.Context, jsonOutput bool, mergeEnv map[string]string, args ...string) *exec.Cmd {
-	allArgs := []string{"show"}
-	if jsonOutput {
-		allArgs = append(allArgs, "-json")
-	}
-	allArgs = append(allArgs, "-no-color")
-	allArgs = append(allArgs, args...)
+func (tf *Terraform) showCmd(ctx context.Context, jsonOutput bool, mergeEnv map[string]string, opts ...ShowOption) (*exec.Cmd, error) {
+	c := defaultShowOptions
 
-	return tf.buildTerraformCmd(ctx, mergeEnv, allArgs...)
+	for _, o := range opts {
+		switch o.(type) {
+		case *ChdirOption:
+			err := tf.compatible(ctx, tf0_14_0, nil)
+			if err != nil {
+				return nil, fmt.Errorf("-chdir was added in Terraform 0.14: %w", err)
+			}
+		}
+
+		o.configureShow(&c)
+	}
+
+	var args []string
+
+	// global opts
+	if c.chdir != "" {
+		args = append(args, "-chdir="+c.chdir)
+	}
+
+	args = append(args, "show")
+
+	if jsonOutput {
+		args = append(args, "-json")
+	}
+
+	args = append(args, "-no-color")
+
+	if c.planArg != "" {
+		args = append(args, c.planArg)
+	}
+
+	if c.stateArg != "" {
+		args = append(args, c.stateArg)
+	}
+
+	return tf.buildTerraformCmd(ctx, mergeEnv, args...), nil
 }

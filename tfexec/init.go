@@ -9,6 +9,7 @@ import (
 type initConfig struct {
 	backend       bool
 	backendConfig []string
+	chdir         string
 	dir           string
 	forceCopy     bool
 	fromModule    string
@@ -46,6 +47,10 @@ func (opt *BackendOption) configureInit(conf *initConfig) {
 
 func (opt *BackendConfigOption) configureInit(conf *initConfig) {
 	conf.backendConfig = append(conf.backendConfig, opt.path)
+}
+
+func (opt *ChdirOption) configureInit(conf *initConfig) {
+	conf.chdir = opt.path
 }
 
 func (opt *DirOption) configureInit(conf *initConfig) {
@@ -106,6 +111,11 @@ func (tf *Terraform) initCmd(ctx context.Context, opts ...InitOption) (*exec.Cmd
 
 	for _, o := range opts {
 		switch o.(type) {
+		case *ChdirOption:
+			err := tf.compatible(ctx, tf0_14_0, nil)
+			if err != nil {
+				return nil, fmt.Errorf("-chdir was added in Terraform 0.14: %w", err)
+			}
 		case *LockOption, *LockTimeoutOption, *VerifyPluginsOption, *GetPluginsOption:
 			err := tf.compatible(ctx, nil, tf0_15_0)
 			if err != nil {
@@ -116,7 +126,14 @@ func (tf *Terraform) initCmd(ctx context.Context, opts ...InitOption) (*exec.Cmd
 		o.configureInit(&c)
 	}
 
-	args := []string{"init", "-no-color", "-force-copy", "-input=false"}
+	var args []string
+
+	// global opts
+	if c.chdir != "" {
+		args = append(args, "-chdir="+c.chdir)
+	}
+
+	args = append(args, []string{"init", "-no-color", "-force-copy", "-input=false"}...)
 
 	// string opts: only pass if set
 	if c.fromModule != "" {

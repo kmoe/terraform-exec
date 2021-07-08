@@ -10,7 +10,7 @@ import (
 func TestRefreshCmd(t *testing.T) {
 	td := testTempDir(t)
 
-	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest013))
+	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest014))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,6 +54,25 @@ func TestRefreshCmd(t *testing.T) {
 			"-var", "var1=foo",
 			"-var", "var2=bar",
 			"refreshdir",
+		}, nil, refreshCmd)
+	})
+
+	t.Run("chdir", func(t *testing.T) {
+		refreshCmd, err := tf.refreshCmd(context.Background(),
+			Chdir("testpath"),
+		)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assertCmd(t, []string{
+			"-chdir=testpath",
+			"refresh",
+			"-no-color",
+			"-input=false",
+			"-lock-timeout=0s",
+			"-lock=true",
 		}, nil, refreshCmd)
 	})
 }

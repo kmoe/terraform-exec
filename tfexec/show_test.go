@@ -19,9 +19,39 @@ func TestShowCmd(t *testing.T) {
 	tf.SetEnv(map[string]string{})
 
 	// defaults
-	showCmd := tf.showCmd(context.Background(), true, nil)
+	showCmd, err := tf.showCmd(context.Background(), true, nil)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	assertCmd(t, []string{
+		"show",
+		"-json",
+		"-no-color",
+	}, nil, showCmd)
+}
+
+func TestShowCmdChdir(t *testing.T) {
+	td := testTempDir(t)
+
+	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest014))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// empty env, to avoid environ mismatch in testing
+	tf.SetEnv(map[string]string{})
+
+	// defaults
+	showCmd, err := tf.showCmd(context.Background(), true, nil, Chdir("testpath"))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assertCmd(t, []string{
+		"-chdir=testpath",
 		"show",
 		"-json",
 		"-no-color",
@@ -39,9 +69,39 @@ func TestShowStateFileCmd(t *testing.T) {
 	// empty env, to avoid environ mismatch in testing
 	tf.SetEnv(map[string]string{})
 
-	showCmd := tf.showCmd(context.Background(), true, nil, "statefilepath")
+	showCmd, err := tf.showCmd(context.Background(), true, nil, StateArg("statefilepath"))
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	assertCmd(t, []string{
+		"show",
+		"-json",
+		"-no-color",
+		"statefilepath",
+	}, nil, showCmd)
+}
+
+func TestShowStateFileCmdChdir(t *testing.T) {
+	td := testTempDir(t)
+
+	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest014))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// empty env, to avoid environ mismatch in testing
+	tf.SetEnv(map[string]string{})
+
+	showCmd, err := tf.showCmd(context.Background(), true, nil, Chdir("testpath"), StateArg("statefilepath"))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assertCmd(t, []string{
+		"-chdir=testpath",
 		"show",
 		"-json",
 		"-no-color",
@@ -60,9 +120,39 @@ func TestShowPlanFileCmd(t *testing.T) {
 	// empty env, to avoid environ mismatch in testing
 	tf.SetEnv(map[string]string{})
 
-	showCmd := tf.showCmd(context.Background(), true, nil, "planfilepath")
+	showCmd, err := tf.showCmd(context.Background(), true, nil, PlanArg("planfilepath"))
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	assertCmd(t, []string{
+		"show",
+		"-json",
+		"-no-color",
+		"planfilepath",
+	}, nil, showCmd)
+}
+
+func TestShowPlanFileCmdChdir(t *testing.T) {
+	td := testTempDir(t)
+
+	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest014))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// empty env, to avoid environ mismatch in testing
+	tf.SetEnv(map[string]string{})
+
+	showCmd, err := tf.showCmd(context.Background(), true, nil, Chdir("testpath"), PlanArg("planfilepath"))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assertCmd(t, []string{
+		"-chdir=testpath",
 		"show",
 		"-json",
 		"-no-color",
@@ -81,9 +171,38 @@ func TestShowPlanFileRawCmd(t *testing.T) {
 	// empty env, to avoid environ mismatch in testing
 	tf.SetEnv(map[string]string{})
 
-	showCmd := tf.showCmd(context.Background(), false, nil, "planfilepath")
+	showCmd, err := tf.showCmd(context.Background(), false, nil, PlanArg("planfilepath"))
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	assertCmd(t, []string{
+		"show",
+		"-no-color",
+		"planfilepath",
+	}, nil, showCmd)
+}
+
+func TestShowPlanFileRawCmdChdir(t *testing.T) {
+	td := testTempDir(t)
+
+	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest014))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// empty env, to avoid environ mismatch in testing
+	tf.SetEnv(map[string]string{})
+
+	showCmd, err := tf.showCmd(context.Background(), false, nil, Chdir("testpath"), PlanArg("planfilepath"))
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assertCmd(t, []string{
+		"-chdir=testpath",
 		"show",
 		"-no-color",
 		"planfilepath",

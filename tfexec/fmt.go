@@ -11,8 +11,9 @@ import (
 )
 
 type formatConfig struct {
-	recursive bool
+	chdir     string
 	dir       string
+	recursive bool
 }
 
 var defaultFormatConfig = formatConfig{
@@ -23,12 +24,16 @@ type FormatOption interface {
 	configureFormat(*formatConfig)
 }
 
-func (opt *RecursiveOption) configureFormat(conf *formatConfig) {
-	conf.recursive = opt.recursive
+func (opt *ChdirOption) configureFormat(conf *formatConfig) {
+	conf.chdir = opt.path
 }
 
 func (opt *DirOption) configureFormat(conf *formatConfig) {
 	conf.dir = opt.path
+}
+
+func (opt *RecursiveOption) configureFormat(conf *formatConfig) {
+	conf.recursive = opt.recursive
 }
 
 // FormatString formats a passed string, given a path to Terraform.
@@ -136,6 +141,11 @@ func (tf *Terraform) formatCmd(ctx context.Context, args []string, opts ...Forma
 
 	for _, o := range opts {
 		switch o.(type) {
+		case *ChdirOption:
+			err := tf.compatible(ctx, tf0_14_0, nil)
+			if err != nil {
+				return nil, fmt.Errorf("-chdir was added in Terraform 0.14: %w", err)
+			}
 		case *RecursiveOption:
 			err := tf.compatible(ctx, tf0_12_0, nil)
 			if err != nil {
@@ -147,6 +157,11 @@ func (tf *Terraform) formatCmd(ctx context.Context, args []string, opts ...Forma
 	}
 
 	args = append([]string{"fmt", "-no-color"}, args...)
+
+	// global opts
+	if c.chdir != "" {
+		args = append([]string{"-chdir=" + c.chdir}, args...)
+	}
 
 	if c.recursive {
 		args = append(args, "-recursive")

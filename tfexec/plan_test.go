@@ -10,7 +10,7 @@ import (
 func TestPlanCmd(t *testing.T) {
 	td := testTempDir(t)
 
-	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest012))
+	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest014))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,6 +60,28 @@ func TestPlanCmd(t *testing.T) {
 			"-var", "android=paranoid",
 			"-var", "brain_size=planet",
 			"earth",
+		}, nil, planCmd)
+	})
+
+	t.Run("chdir", func(t *testing.T) {
+		planCmd, err := tf.planCmd(context.Background(),
+			Chdir("testpath"),
+		)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assertCmd(t, []string{
+			"-chdir=testpath",
+			"plan",
+			"-no-color",
+			"-input=false",
+			"-detailed-exitcode",
+			"-lock-timeout=0s",
+			"-lock=true",
+			"-parallelism=10",
+			"-refresh=true",
 		}, nil, planCmd)
 	})
 }

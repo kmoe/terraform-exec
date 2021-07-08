@@ -10,7 +10,7 @@ import (
 func TestInitCmd(t *testing.T) {
 	td := testTempDir(t)
 
-	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest012))
+	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest014))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,6 +65,31 @@ func TestInitCmd(t *testing.T) {
 			"-plugin-dir=testdir1",
 			"-plugin-dir=testdir2",
 			"initdir",
+		}, nil, initCmd)
+	})
+
+	t.Run("chdir", func(t *testing.T) {
+		initCmd, err := tf.initCmd(context.Background(),
+			Chdir("testpath"),
+		)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assertCmd(t, []string{
+			"-chdir=testpath",
+			"init",
+			"-no-color",
+			"-force-copy",
+			"-input=false",
+			"-lock-timeout=0s",
+			"-backend=true",
+			"-get=true",
+			"-upgrade=false",
+			"-lock=true",
+			"-get-plugins=true",
+			"-verify-plugins=true",
 		}, nil, initCmd)
 	})
 }

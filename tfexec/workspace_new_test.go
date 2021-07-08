@@ -11,7 +11,7 @@ import (
 func TestWorkspaceNewCmd(t *testing.T) {
 	td := testTempDir(t)
 
-	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest013))
+	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest014))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,6 +50,20 @@ func TestWorkspaceNewCmd(t *testing.T) {
 			"-lock-timeout=200s",
 			"-lock=false",
 			"-state=teststate",
+			"workspace-name",
+		}, nil, workspaceNewCmd)
+	})
+
+	t.Run("chdir", func(t *testing.T) {
+		workspaceNewCmd, err := tf.workspaceNewCmd(context.Background(), "workspace-name", Chdir("testpath"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assertCmd(t, []string{
+			"-chdir=testpath",
+			"workspace", "new",
+			"-no-color",
 			"workspace-name",
 		}, nil, workspaceNewCmd)
 	})

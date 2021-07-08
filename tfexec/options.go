@@ -58,6 +58,16 @@ func DisableBackup() *BackupOption {
 	return &BackupOption{"-"}
 }
 
+// ChdirOption represents the -chdir flag.
+type ChdirOption struct {
+	path string
+}
+
+// Chdir represents the -chdir flag.
+func Chdir(path string) *ChdirOption {
+	return &ChdirOption{path}
+}
+
 // ConfigOption represents the -config flag.
 type ConfigOption struct {
 	path string
@@ -84,6 +94,7 @@ type DirOption struct {
 	path string
 }
 
+// Deprecated: Terraform 0.14.0 and later should use Chdir()
 func Dir(path string) *DirOption {
 	return &DirOption{path}
 }
@@ -92,6 +103,7 @@ type DirOrPlanOption struct {
 	path string
 }
 
+// Deprecated: Terraform 0.14.0 and later should use Chdir() and/or PlanArg()
 func DirOrPlan(path string) *DirOrPlanOption {
 	return &DirOrPlanOption{path}
 }
@@ -194,6 +206,14 @@ func Parallelism(n int) *ParallelismOption {
 	return &ParallelismOption{n}
 }
 
+type PlanArgOption struct {
+	path string
+}
+
+func PlanArg(path string) *PlanArgOption {
+	return &PlanArgOption{path}
+}
+
 type PluginDirOption struct {
 	pluginDir string
 }
@@ -272,6 +292,14 @@ type StateOption struct {
 // See https://github.com/hashicorp/terraform/issues/25920#issuecomment-676560799
 func State(path string) *StateOption {
 	return &StateOption{path}
+}
+
+type StateArgOption struct {
+	path string
+}
+
+func StateArg(path string) *StateArgOption {
+	return &StateArgOption{path}
 }
 
 type StateOutOption struct {

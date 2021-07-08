@@ -10,7 +10,7 @@ import (
 func TestProvidersSchemaCmd(t *testing.T) {
 	td := testTempDir(t)
 
-	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest012))
+	tf, err := NewTerraform(td, tfVersion(t, testutil.Latest014))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -18,12 +18,36 @@ func TestProvidersSchemaCmd(t *testing.T) {
 	// empty env, to avoid environ mismatch in testing
 	tf.SetEnv(map[string]string{})
 
-	schemaCmd := tf.providersSchemaCmd(context.Background())
+	t.Run("defaults", func(t *testing.T) {
+		schemaCmd, err := tf.providersSchemaCmd(context.Background())
 
-	assertCmd(t, []string{
-		"providers",
-		"schema",
-		"-json",
-		"-no-color",
-	}, nil, schemaCmd)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assertCmd(t, []string{
+			"providers",
+			"schema",
+			"-json",
+			"-no-color",
+		}, nil, schemaCmd)
+	})
+
+	t.Run("chdir", func(t *testing.T) {
+		schemaCmd, err := tf.providersSchemaCmd(context.Background(),
+			Chdir("testpath"),
+		)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assertCmd(t, []string{
+			"-chdir=testpath",
+			"providers",
+			"schema",
+			"-json",
+			"-no-color",
+		}, nil, schemaCmd)
+	})
 }

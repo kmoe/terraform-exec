@@ -3,18 +3,39 @@ package tfexec
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"os/exec"
 	"strings"
 )
 
+type workspaceListConfig struct {
+	chdir string
+}
+
+var defaultWorkspaceListOptions = workspaceListConfig{}
+
+// WorkspaceListCmdOption represents options that are applicable to the WorkspaceList method.
+type WorkspaceListCmdOption interface {
+	configureWorkspaceList(*workspaceListConfig)
+}
+
+func (opt *ChdirOption) configureWorkspaceList(conf *workspaceListConfig) {
+	conf.chdir = opt.path
+}
+
 // WorkspaceList represents the workspace list subcommand to the Terraform CLI.
-func (tf *Terraform) WorkspaceList(ctx context.Context) ([]string, string, error) {
+func (tf *Terraform) WorkspaceList(ctx context.Context, opts ...WorkspaceListCmdOption) ([]string, string, error) {
 	// TODO: [DIR] param option
-	wlCmd := tf.buildTerraformCmd(ctx, nil, "workspace", "list", "-no-color")
+	wlCmd, err := tf.workspaceListCmd(ctx, opts...)
+
+	if err != nil {
+		return nil, "", err
+	}
 
 	var outBuf bytes.Buffer
 	wlCmd.Stdout = &outBuf
 
-	err := tf.runTerraformCmd(ctx, wlCmd)
+	err = tf.runTerraformCmd(ctx, wlCmd)
 	if err != nil {
 		return nil, "", err
 	}
@@ -22,6 +43,37 @@ func (tf *Terraform) WorkspaceList(ctx context.Context) ([]string, string, error
 	ws, current := parseWorkspaceList(outBuf.String())
 
 	return ws, current, nil
+}
+
+func (tf *Terraform) workspaceListCmd(ctx context.Context, opts ...WorkspaceListCmdOption) (*exec.Cmd, error) {
+	// TODO: [DIR] param option
+
+	c := defaultWorkspaceListOptions
+
+	for _, o := range opts {
+		switch o.(type) {
+		case *ChdirOption:
+			err := tf.compatible(ctx, tf0_14_0, nil)
+			if err != nil {
+				return nil, fmt.Errorf("-chdir was added in Terraform 0.14: %w", err)
+			}
+		}
+
+		o.configureWorkspaceList(&c)
+	}
+
+	var args []string
+
+	// global opts
+	if c.chdir != "" {
+		args = append(args, "-chdir="+c.chdir)
+	}
+
+	args = append(args, []string{"workspace", "list", "-no-color"}...)
+
+	cmd := tf.buildTerraformCmd(ctx, nil, args...)
+
+	return cmd, nil
 }
 
 const currentWorkspacePrefix = "* "

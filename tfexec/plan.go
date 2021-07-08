@@ -8,6 +8,7 @@ import (
 )
 
 type planConfig struct {
+	chdir        string
 	destroy      bool
 	dir          string
 	lock         bool
@@ -33,6 +34,10 @@ var defaultPlanOptions = planConfig{
 // PlanOption represents options used in the Plan method.
 type PlanOption interface {
 	configurePlan(*planConfig)
+}
+
+func (opt *ChdirOption) configurePlan(conf *planConfig) {
+	conf.chdir = opt.path
 }
 
 func (opt *DirOption) configurePlan(conf *planConfig) {
@@ -107,10 +112,25 @@ func (tf *Terraform) planCmd(ctx context.Context, opts ...PlanOption) (*exec.Cmd
 	c := defaultPlanOptions
 
 	for _, o := range opts {
+		switch o.(type) {
+		case *ChdirOption:
+			err := tf.compatible(ctx, tf0_14_0, nil)
+			if err != nil {
+				return nil, fmt.Errorf("-chdir was added in Terraform 0.14: %w", err)
+			}
+		}
+
 		o.configurePlan(&c)
 	}
 
-	args := []string{"plan", "-no-color", "-input=false", "-detailed-exitcode"}
+	var args []string
+
+	// global opts
+	if c.chdir != "" {
+		args = append(args, "-chdir="+c.chdir)
+	}
+
+	args = append(args, []string{"plan", "-no-color", "-input=false", "-detailed-exitcode"}...)
 
 	// string opts: only pass if set
 	if c.lockTimeout != "" {

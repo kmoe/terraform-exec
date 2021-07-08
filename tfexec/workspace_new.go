@@ -8,9 +8,10 @@ import (
 )
 
 type workspaceNewConfig struct {
+	chdir       string
+	copyState   string
 	lock        bool
 	lockTimeout string
-	copyState   string
 }
 
 var defaultWorkspaceNewOptions = workspaceNewConfig{
@@ -23,16 +24,20 @@ type WorkspaceNewCmdOption interface {
 	configureWorkspaceNew(*workspaceNewConfig)
 }
 
+func (opt *ChdirOption) configureWorkspaceNew(conf *workspaceNewConfig) {
+	conf.chdir = opt.path
+}
+
+func (opt *CopyStateOption) configureWorkspaceNew(conf *workspaceNewConfig) {
+	conf.copyState = opt.path
+}
+
 func (opt *LockOption) configureWorkspaceNew(conf *workspaceNewConfig) {
 	conf.lock = opt.lock
 }
 
 func (opt *LockTimeoutOption) configureWorkspaceNew(conf *workspaceNewConfig) {
 	conf.lockTimeout = opt.timeout
-}
-
-func (opt *CopyStateOption) configureWorkspaceNew(conf *workspaceNewConfig) {
-	conf.copyState = opt.path
 }
 
 // WorkspaceNew represents the workspace new subcommand to the Terraform CLI.
@@ -51,6 +56,11 @@ func (tf *Terraform) workspaceNewCmd(ctx context.Context, workspace string, opts
 
 	for _, o := range opts {
 		switch o.(type) {
+		case *ChdirOption:
+			err := tf.compatible(ctx, tf0_14_0, nil)
+			if err != nil {
+				return nil, fmt.Errorf("-chdir was added in Terraform 0.14: %w", err)
+			}
 		case *LockOption, *LockTimeoutOption:
 			err := tf.compatible(ctx, tf0_12_0, nil)
 			if err != nil {
@@ -61,7 +71,14 @@ func (tf *Terraform) workspaceNewCmd(ctx context.Context, workspace string, opts
 		o.configureWorkspaceNew(&c)
 	}
 
-	args := []string{"workspace", "new", "-no-color"}
+	var args []string
+
+	// global opts
+	if c.chdir != "" {
+		args = append(args, "-chdir="+c.chdir)
+	}
+
+	args = append(args, []string{"workspace", "new", "-no-color"}...)
 
 	if c.lockTimeout != "" && c.lockTimeout != defaultWorkspaceNewOptions.lockTimeout {
 		// only pass if not default, so we don't need to worry about the 0.11 version check

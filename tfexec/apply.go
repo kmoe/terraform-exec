@@ -9,12 +9,14 @@ import (
 
 type applyConfig struct {
 	backup    string
+	chdir     string
 	dirOrPlan string
 	lock      bool
 
 	// LockTimeout must be a string with time unit, e.g. '10s'
 	lockTimeout  string
 	parallelism  int
+	planArg      string
 	reattachInfo ReattachInfo
 	refresh      bool
 	state        string
@@ -77,8 +79,16 @@ func (opt *VarOption) configureApply(conf *applyConfig) {
 	conf.vars = append(conf.vars, opt.assignment)
 }
 
+func (opt *ChdirOption) configureApply(conf *applyConfig) {
+	conf.chdir = opt.path
+}
+
 func (opt *DirOrPlanOption) configureApply(conf *applyConfig) {
 	conf.dirOrPlan = opt.path
+}
+
+func (opt *PlanArgOption) configureApply(conf *applyConfig) {
+	conf.planArg = opt.path
 }
 
 func (opt *ReattachOption) configureApply(conf *applyConfig) {
@@ -98,10 +108,25 @@ func (tf *Terraform) applyCmd(ctx context.Context, opts ...ApplyOption) (*exec.C
 	c := defaultApplyOptions
 
 	for _, o := range opts {
+		switch o.(type) {
+		case *ChdirOption:
+			err := tf.compatible(ctx, tf0_14_0, nil)
+			if err != nil {
+				return nil, fmt.Errorf("-chdir was added in Terraform 0.14: %w", err)
+			}
+		}
+
 		o.configureApply(&c)
 	}
 
-	args := []string{"apply", "-no-color", "-auto-approve", "-input=false"}
+	var args []string
+
+	// global opts
+	if c.chdir != "" {
+		args = append(args, "-chdir="+c.chdir)
+	}
+
+	args = append(args, []string{"apply", "-no-color", "-auto-approve", "-input=false"}...)
 
 	// string opts: only pass if set
 	if c.backup != "" {
@@ -140,6 +165,10 @@ func (tf *Terraform) applyCmd(ctx context.Context, opts ...ApplyOption) (*exec.C
 	// string argument: pass if set
 	if c.dirOrPlan != "" {
 		args = append(args, c.dirOrPlan)
+	}
+
+	if c.planArg != "" {
+		args = append(args, c.planArg)
 	}
 
 	mergeEnv := map[string]string{}

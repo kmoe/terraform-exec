@@ -8,6 +8,7 @@ import (
 
 type refreshConfig struct {
 	backup       string
+	chdir        string
 	dir          string
 	lock         bool
 	lockTimeout  string
@@ -31,6 +32,10 @@ type RefreshCmdOption interface {
 
 func (opt *BackupOption) configureRefresh(conf *refreshConfig) {
 	conf.backup = opt.path
+}
+
+func (opt *ChdirOption) configureRefresh(conf *refreshConfig) {
+	conf.chdir = opt.path
 }
 
 func (opt *DirOption) configureRefresh(conf *refreshConfig) {
@@ -85,7 +90,14 @@ func (tf *Terraform) refreshCmd(ctx context.Context, opts ...RefreshCmdOption) (
 		o.configureRefresh(&c)
 	}
 
-	args := []string{"refresh", "-no-color", "-input=false"}
+	var args []string
+
+	// global opts
+	if c.chdir != "" {
+		args = append(args, "-chdir="+c.chdir)
+	}
+
+	args = append(args, []string{"refresh", "-no-color", "-input=false"}...)
 
 	// string opts: only pass if set
 	if c.backup != "" {

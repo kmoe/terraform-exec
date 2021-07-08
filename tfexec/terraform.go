@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"sync"
 
 	"github.com/hashicorp/go-version"
@@ -71,10 +72,13 @@ func NewTerraform(workingDir string, execPath string) (*Terraform, error) {
 	}
 
 	if execPath == "" {
-		err := fmt.Errorf("NewTerraform: please supply the path to a Terraform executable using execPath, e.g. using the tfinstall package.")
-		return nil, &ErrNoSuitableBinary{
-			err: err,
+		p, err := exec.LookPath("terraform")
+		if err != nil {
+			return nil, &ErrNoSuitableBinary{
+				err: fmt.Errorf("NewTerraform: please supply the path to a Terraform executable using execPath, e.g. using the tfinstall package."),
+			}
 		}
+		execPath = p
 	}
 	tf := Terraform{
 		execPath:   execPath,

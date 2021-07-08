@@ -18,8 +18,7 @@ function pleaseUseGNUsed {
 function init {
   sed --version > /dev/null || pleaseUseGNUsed
 
-  DATE=`date '+%B %d, %Y'`
-  START_DIR=`pwd`
+  DATE=$(date '+%B %d, %Y')
 
   if [ "$CI" = true ] ; then
     GPG_KEY_ID=C6DC8F8C8E78B36A
@@ -37,7 +36,7 @@ semverRegex='\([0-9]\+\.[0-9]\+\.[0-9]\+\)\(-\?\)\([0-9a-zA-Z.]\+\)\?'
 function getTargetVersion {
   # parse target version from CHANGELOG
   sed -n 's/^# '"$semverRegex"' (Unreleased)$/\1\2\3/p' CHANGELOG.md || \
-     (echo "\nTarget version not found in changelog, exiting" && \
+     (printf "\nTarget version not found in changelog, exiting" && \
        exit 1)
 }
 

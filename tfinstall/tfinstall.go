@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+const (
+	BinaryFileName = "terraform"
+)
+
 const baseURL = "https://releases.hashicorp.com/terraform"
 
 type ExecPathFinder interface {

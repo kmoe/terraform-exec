@@ -92,7 +92,7 @@ func downloadWithVerification(ctx context.Context, tfVersion string, installDir 
 		return "", err
 	}
 
-	return filepath.Join(tfDir, "terraform"), nil
+	return filepath.Join(tfDir, BinaryFileName), nil
 }
 
 // verifySumsSignature downloads SHA256SUMS and SHA256SUMS.sig and verifies

@@ -18,7 +18,7 @@ func LookPath() *LookPathOption {
 }
 
 func (opt *LookPathOption) ExecPath(context.Context) (string, error) {
-	p, err := exec.LookPath("terraform")
+	p, err := exec.LookPath(BinaryFileName)
 	if err != nil {
 		if notFoundErr, ok := err.(*exec.Error); ok && notFoundErr.Err == exec.ErrNotFound {
 			log.Printf("[WARN] could not locate a terraform executable on system path; continuing")
